@@ -36,6 +36,7 @@ Use `--headless` somente depois de fazer login numa execucao visivel. O limite a
 - cada clique so e contabilizado quando o contador ou o icone confirma a selecao;
 - pausas aleatorias de aproximadamente 0,3 a 0,65 segundo entre selecoes e de 2,5 a 4,5 segundos entre lotes;
 - em caso de erro, salva uma captura em `diagnostics`, envia `Ctrl+F5` e tenta novamente, ate tres tentativas;
+- se aparecer `Something went wrong` ao apagar, o bot clica em `OK`, atualiza a pagina e tenta o lote de novo;
 - nao contorna CAPTCHA, verificacao de identidade, limite ou bloqueio do Instagram.
 
 Se o Instagram pedir CAPTCHA, confirmacao ou limitar a conta, interrompa o bot e conclua a verificacao manualmente. A interface do Instagram pode mudar; nesse caso, consulte a captura em `diagnostics`.

@@ -1,6 +1,6 @@
 {
   "name": "instagram-comment-cleaner",
-  "version": "1.2.0",
+  "version": "1.2.2",
   "private": true,
   "type": "module",
   "description": "Bot local e conservador para apagar comentarios do Instagram em lotes de ate 20.",

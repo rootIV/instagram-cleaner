@@ -2,6 +2,24 @@ export const COMMENTS_URL = 'https://www.instagram.com/your_activity/interaction
 
 const SELECT_BUTTON_NAME = /^(Select|Selecionar)$/i;
 const CHECKBOX_SELECTOR = '[data-testid="bulk_action_checkbox"] [role="button"][aria-label="Toggle checkbox"]';
+const RECOVERABLE_DELETE_ERROR_TEXT =
+  /Something went wrong|There was a problem deleting some or all of your content|Algo deu errado|Houve um problema ao excluir/i;
+
+function recoverableDeleteErrorDialog(page) {
+  return page.getByRole('dialog').filter({ hasText: RECOVERABLE_DELETE_ERROR_TEXT });
+}
+
+export async function throwIfRecoverableInstagramError(page) {
+  const dialog = recoverableDeleteErrorDialog(page).first();
+  if (!(await dialog.isVisible().catch(() => false))) return;
+
+  const okButton = dialog.getByRole('button', { name: /^(OK|Ok|Okay|Tudo bem)$/i });
+  if (await okButton.first().isVisible().catch(() => false)) {
+    await clickInteractive(okButton);
+  }
+
+  throw new Error('Instagram informou falha ao excluir. Atualizando a pagina e tentando novamente.');
+}
 
 export async function detectCommentsState(page, timeoutMs = 15_000) {
   const nonEmptyContainer = page.locator('[data-testid="comments_container_non_empty_state"]');
@@ -13,6 +31,8 @@ export async function detectCommentsState(page, timeoutMs = 15_000) {
   const deadline = Date.now() + timeoutMs;
 
   while (Date.now() < deadline) {
+    await throwIfRecoverableInstagramError(page);
+
     if (await selectText.last().isVisible().catch(() => false)
       || await nonEmptyContainer.isVisible().catch(() => false)) {
       return 'non-empty';
@@ -129,12 +149,23 @@ export async function clickDeleteAndConfirm(page, pause = humanPause) {
   await clickInteractive(page.getByRole('button', { name: deleteName }));
   await pause(page, 1_000, 1_800);
 
-  const dialog = page.getByRole('dialog').filter({ hasText: /Delete|Excluir/i });
+  const dialog = page.getByRole('dialog').filter({
+    hasText: /Delete comments\?|Excluir coment[aá]rios\?|Are you sure you want to delete these comments\?/i,
+  });
   const confirmationText = page.getByText(
-    /Delete comments\?|Excluir coment[aá]rios\?|Delete \d+ comments|Excluir \d+ coment[aá]rios/i,
+    /Delete comments\?|Excluir coment[aá]rios\?|Are you sure you want to delete these comments\?|Delete \d+ comments|Excluir \d+ coment[aá]rios/i,
   );
   await dialog.or(confirmationText).first().waitFor({ state: 'visible', timeout: 10_000 });
 
-  const confirmationButtons = page.getByRole('button', { name: deleteName });
+  const confirmationButtons = dialog.first().getByRole('button', { name: deleteName });
+  await confirmationButtons.first().waitFor({ state: 'visible', timeout: 10_000 });
   await clickInteractive(confirmationButtons);
+
+  for (let check = 0; check < 40; check += 1) {
+    await throwIfRecoverableInstagramError(page);
+    if (!(await dialog.first().isVisible().catch(() => false))) return;
+    await page.waitForTimeout(250);
+  }
+
+  throw new Error('O dialogo de exclusao nao fechou apos confirmar.');
 }
